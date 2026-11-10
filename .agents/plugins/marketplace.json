@@ -1,7 +1,7 @@
 {
-  "name": "jccapril",
+  "name": "bo-plugin-marketplace",
   "interface": {
-    "displayName": "jccapril"
+    "displayName": "bo-plugin-marketplace"
   },
   "plugins": [
     {

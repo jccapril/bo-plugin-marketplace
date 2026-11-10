@@ -1,14 +1,14 @@
-# ios-figma-png
+# bo-plugin-marketplace
 
-一个面向 iOS 开发的 Codex 插件。它从 Figma 节点导出 3x PNG，用内置的 TinyPNG CLI 压缩，再将结果放入 Xcode 图片集的 3x 槽位。例如，24 × 24 pt 的图标会以 72 × 72 px 导入。
+这个 Codex 插件市场提供 `ios-figma-png`。它从 Figma 节点导出 3x PNG，用内置的 TinyPNG CLI 压缩，再将结果放入 Xcode 图片集的 3x 槽位。例如，24 × 24 pt 的图标会以 72 × 72 px 导入。
 
 ## 安装
 
 在装有 Codex CLI 的终端中运行以下命令，添加 GitHub 插件市场并安装插件。
 
 ```sh
-codex plugin marketplace add jccapril/ios-figma-png
-codex plugin add ios-figma-png@jccapril
+codex plugin marketplace add jccapril/bo-plugin-marketplace
+codex plugin add ios-figma-png@bo-plugin-marketplace
 ```
 
 安装后打开新的 Codex 聊天。图片压缩需要 Python 3.8 或更高版本，压缩时会将所选图片上传至 Tinify。
