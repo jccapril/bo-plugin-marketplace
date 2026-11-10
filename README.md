@@ -12,7 +12,21 @@ mkdir -p "$skills_dir"
 cp -R skills/ios-figma-png "$skills_dir/"
 ```
 
-在运行 Codex 的环境中设置 `TINIFY_API_KEY`，重启 Codex 后即可调用技能。CLI 需要 Python 3.8 或更高版本，只使用标准库。压缩时会将所选图片上传至 Tinify。[获取 TinyPNG API 密钥](https://tinypng.com/developers)
+图片压缩需要 Python 3.8 或更高版本，只使用标准库。压缩时会将所选图片上传至 Tinify。
+
+## 首次获取 API Key
+
+在 Codex 中输入「用 $ios-figma-png 帮我申请 TinyPNG API Key」。技能会询问用于申请的**用户名和邮箱**，有浏览器工具时会代填官方表单。按页面提示提交并完成验证，用激活邮件中的链接进入控制台，复制个人 API Key。[TinyPNG 官方申请说明](https://tinypng.com/developers)
+
+也可从仓库根目录在本机终端运行向导：
+
+```sh
+./tinypng setup
+```
+
+向导自动打开官方表单供你填写用户名和邮箱。如果当前 Python 环境装有 Playwright，且本机装有 Chrome，向导会在终端询问这两项并预填表单。注册后将 API Key 粘贴回终端，输入时不可见。已有密钥可运行 `./tinypng setup --existing` 直接保存。
+
+个人密钥以仅当前用户可读写的权限保存到 `~/.config/ios-figma-png/api-key`，重装技能后仍可使用。`TINIFY_API_KEY` 环境变量优先。如果两者均未配置，CLI 仍支持旧版技能内的 `scripts/.tinify-key`。
 
 ## 使用
 

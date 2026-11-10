@@ -2,18 +2,26 @@
 """Compress a local image with the Tinify HTTP API."""
 
 import argparse
+import getpass
 import http.client
 import json
 import os
+import re
+import shlex
 import shutil
+import sys
 import tempfile
+import webbrowser
 from base64 import b64encode
 from contextlib import closing
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 API_HOST = "api.tinify.com"
 API_ORIGIN = f"https://{API_HOST}"
+SIGNUP_URL = "https://tinypng.com/developers"
+PERSONAL_KEY = Path.home() / ".config" / "ios-figma-png" / "api-key"
 MEDIA_TYPES = {
     ".png": "image/png",
     ".jpg": "image/jpeg",
@@ -85,15 +93,103 @@ def compress(source, target, key):
     return input_size, output_size
 
 
+def api_key():
+    override = os.environ.get("TINIFY_API_KEY")
+    if override:
+        return override
+    for path in (PERSONAL_KEY, Path(__file__).resolve().with_name(".tinify-key")):
+        try:
+            return path.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            continue
+    return None
+
+
+def save_personal_key():
+    key = getpass.getpass("粘贴控制台中的 API Key（输入隐藏，留空取消）：").strip()
+    if not key:
+        raise ValueError("已取消，原配置保持不变")
+    if not key.isascii() or any(c.isspace() for c in key) or "://" in key:
+        raise ValueError("请复制控制台中的 API Key 值")
+    PERSONAL_KEY.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    temp = tempfile.NamedTemporaryFile(mode="w", dir=PERSONAL_KEY.parent, delete=False)
+    try:
+        with temp:
+            temp.write(key + "\n")
+        os.replace(temp.name, PERSONAL_KEY)
+    finally:
+        Path(temp.name).unlink(missing_ok=True)
+    print(f"已保存个人密钥到 {PERSONAL_KEY}")
+    if os.environ.get("TINIFY_API_KEY"):
+        print("当前环境中的 TINIFY_API_KEY 将优先用于压缩。")
+
+
+def signup_in_default_browser():
+    print(f"请在官方表单填写用户名（Name）和邮箱（Email Address）。申请页：{SIGNUP_URL}", flush=True)
+    webbrowser.open(SIGNUP_URL)
+    save_personal_key()
+
+
+def signup():
+    print("请在 TinyPNG 申请页确认姓名和邮箱，提交后用邮件中的链接激活账号并复制 API Key。")
+    try:
+        from playwright.sync_api import Error, sync_playwright
+    except ModuleNotFoundError:
+        signup_in_default_browser()
+        return
+
+    name = input("提交给 TinyPNG 的用户名（Name）：").strip()
+    email = input("接收激活邮件的邮箱：").strip()
+    if not name or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
+        raise ValueError("请填写用户名和有效邮箱")
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel="chrome", headless=False)
+            page = browser.new_page()
+            page.goto(SIGNUP_URL, wait_until="domcontentloaded")
+            origin = urlsplit(page.url)
+            if origin.scheme != "https" or origin.hostname not in {"tinypng.com", "tinify.com"}:
+                raise ValueError("申请页没有打开在 TinyPNG 官方站点")
+            page.locator('form input[name="name"]').fill(name)
+            page.locator('form input[name="email"]').fill(email)
+            print("申请资料已填好。请在窗口中提交 Create API key，并按页面提示完成验证。")
+            save_personal_key()
+    except Error:
+        print("Chrome 自动填表不可用，将在默认浏览器中继续申请。")
+        signup_in_default_browser()
+
+
+def setup(args):
+    parser = argparse.ArgumentParser(prog="tinypng setup", description="申请并保存自己的 TinyPNG API Key")
+    parser.add_argument("--existing", action="store_true", help="直接保存已取得的密钥")
+    options = parser.parse_args(args)
+    if not sys.stdin.isatty():
+        parser.exit(2, "请在本机的交互终端运行 tinypng setup，以隐藏密钥输入。\n")
+    try:
+        if options.existing:
+            save_personal_key()
+        else:
+            signup()
+    except (EOFError, KeyboardInterrupt):
+        parser.exit(130, "\n已取消配置\n")
+    except (OSError, ValueError) as error:
+        parser.exit(1, f"配置失败：{error}\n")
+
+
 def main():
-    parser = argparse.ArgumentParser(description="使用 TinyPNG 压缩 PNG、JPEG、WebP、AVIF 或 JPEG XL 图片")
+    if sys.argv[1:2] == ["setup"]:
+        setup(sys.argv[2:])
+        return
+    parser = argparse.ArgumentParser(description="使用 TinyPNG 压缩 PNG、JPEG、WebP、AVIF 或 JPEG XL 图片",
+                                     epilog="首次使用请运行 tinypng setup 申请并保存密钥。")
     parser.add_argument("image", type=Path, help="输入图片路径")
     parser.add_argument("-o", "--output", type=Path, help="输出路径，默认写入同目录的 <名称>.min.<扩展名>")
     args = parser.parse_args()
-    key = os.environ.get("TINIFY_API_KEY")
-    if not key:
-        parser.exit(2, "请先设置环境变量 TINIFY_API_KEY\n")
     try:
+        key = api_key()
+        if not key:
+            cli = shlex.quote(str(Path(__file__).resolve()))
+            parser.exit(2, f"未配置 TinyPNG 密钥。请在终端运行 python3 {cli} setup，或设置 TINIFY_API_KEY。\n")
         target = args.output or args.image.with_suffix(".min" + args.image.suffix)
         before, after = compress(args.image, target, key)
     except (OSError, ValueError, http.client.HTTPException) as error:
