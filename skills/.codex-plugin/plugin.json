@@ -1,0 +1,14 @@
+{
+  "name": "ios-figma-png",
+  "version": "1.0.0",
+  "description": "将 Figma 节点导出为 3x PNG，经 TinyPNG 压缩后导入 Xcode 图片集。",
+  "author": {
+    "name": "jccapril"
+  },
+  "skills": "./ios-figma-png",
+  "interface": {
+    "displayName": "iOS Figma PNG",
+    "shortDescription": "从 Figma 导入压缩后的 iOS 三倍图",
+    "category": "Development"
+  }
+}

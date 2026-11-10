@@ -1,22 +1,21 @@
 # ios-figma-png
 
-一个面向 iOS 开发的 Codex 技能。它从 Figma 节点导出 3x PNG，用随技能分发的 TinyPNG CLI 压缩，再将结果放入 Xcode 图片集的 3x 槽位。例如，24 × 24 pt 的图标会以 72 × 72 px 导入。
+一个面向 iOS 开发的 Codex 插件。它从 Figma 节点导出 3x PNG，用内置的 TinyPNG CLI 压缩，再将结果放入 Xcode 图片集的 3x 槽位。例如，24 × 24 pt 的图标会以 72 × 72 px 导入。
 
 ## 安装
 
-下载或克隆仓库，在仓库根目录运行以下命令。技能和 CLI 会一起安装。
+在装有 Codex CLI 的终端中运行以下命令，添加 GitHub 插件市场并安装插件。
 
 ```sh
-skills_dir="${CODEX_HOME:-$HOME/.codex}/skills"
-mkdir -p "$skills_dir"
-cp -R skills/ios-figma-png "$skills_dir/"
+codex plugin marketplace add jccapril/ios-figma-png
+codex plugin add ios-figma-png@jccapril
 ```
 
-图片压缩需要 Python 3.8 或更高版本，只使用标准库。压缩时会将所选图片上传至 Tinify。
+安装后打开新的 Codex 聊天。图片压缩需要 Python 3.8 或更高版本，压缩时会将所选图片上传至 Tinify。
 
 ## 首次获取 API Key
 
-在 Codex 中输入「用 $ios-figma-png 帮我申请 TinyPNG API Key」。技能会询问用于申请的**用户名和邮箱**，有浏览器工具时会代填官方表单。按页面提示提交并完成验证，用激活邮件中的链接进入控制台，复制个人 API Key。[TinyPNG 官方申请说明](https://tinypng.com/developers)
+在 Codex 中输入「用 iOS Figma PNG 插件帮我配置 TinyPNG API Key」。首次申请时，插件会询问**用户名和邮箱**，有浏览器工具时会代填官方表单。按页面提示提交并完成验证，用激活邮件中的链接进入控制台，复制个人 API Key。已有密钥时，按插件给出的终端命令在本机保存即可。[TinyPNG 官方申请说明](https://tinypng.com/developers)
 
 也可从仓库根目录在本机终端运行向导：
 
@@ -32,12 +31,12 @@ cp -R skills/ios-figma-png "$skills_dir/"
 
 给 Codex 提供 Figma 节点链接和目标资源名，例如：
 
-> 用 $ios-figma-png 将这个 Figma 节点导入为 CloseIcon，放到 App 的 Assets.xcassets 中。
+> 用 iOS Figma PNG 插件将这个 Figma 节点导入为 CloseIcon，放到 App 的 Assets.xcassets 中。
 
-也可以单独调用已安装的 CLI：
+如果已克隆仓库，也可以在仓库根目录单独运行 CLI。
 
 ```sh
-python3 "${CODEX_HOME:-$HOME/.codex}/skills/ios-figma-png/scripts/tinypng" "CloseIcon@3x.png"
+./tinypng "CloseIcon@3x.png"
 ```
 
 默认生成 `CloseIcon@3x.min.png`。用 `-o <路径>` 可以指定输出文件。
