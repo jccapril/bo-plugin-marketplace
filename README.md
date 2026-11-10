@@ -17,13 +17,13 @@ codex plugin add ios-figma-png@bo-plugin-marketplace
 
 在 Codex 中输入「用 iOS Figma PNG 插件帮我配置 TinyPNG API Key」。首次申请时，插件会询问**用户名和邮箱**，有浏览器工具时会代填官方表单。按页面提示提交并完成验证，用激活邮件中的链接进入控制台，复制个人 API Key。已有密钥时，按插件给出的终端命令在本机保存即可。[TinyPNG 官方申请说明](https://tinypng.com/developers)
 
-也可从仓库根目录在本机终端运行向导：
+如果已克隆仓库，也可以从仓库根目录运行插件内的配置向导。
 
 ```sh
-./tinypng setup
+python3 skills/ios-figma-png/scripts/tinypng setup
 ```
 
-向导自动打开官方表单供你填写用户名和邮箱。如果当前 Python 环境装有 Playwright，且本机装有 Chrome，向导会在终端询问这两项并预填表单。注册后将 API Key 粘贴回终端，输入时不可见。已有密钥可运行 `./tinypng setup --existing` 直接保存。
+向导自动打开官方表单供你填写用户名和邮箱。如果当前 Python 环境装有 Playwright，且本机装有 Chrome，向导会在终端询问这两项并预填表单。注册后将 API Key 粘贴回终端，输入时不可见。已有密钥时，在上述命令末尾加上 `--existing` 即可直接保存。
 
 个人密钥以仅当前用户可读写的权限保存到 `~/.config/ios-figma-png/api-key`，重装技能后仍可使用。`TINIFY_API_KEY` 环境变量优先。如果两者均未配置，CLI 仍支持旧版技能内的 `scripts/.tinify-key`。
 
@@ -36,7 +36,7 @@ codex plugin add ios-figma-png@bo-plugin-marketplace
 如果已克隆仓库，也可以在仓库根目录单独运行 CLI。
 
 ```sh
-./tinypng "CloseIcon@3x.png"
+python3 skills/ios-figma-png/scripts/tinypng "CloseIcon@3x.png"
 ```
 
 默认生成 `CloseIcon@3x.min.png`。用 `-o <路径>` 可以指定输出文件。
