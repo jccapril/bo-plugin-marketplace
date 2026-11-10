@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""Compress a local image with the Tinify HTTP API."""
+
+import argparse
+import http.client
+import json
+import os
+import shutil
+import tempfile
+from base64 import b64encode
+from contextlib import closing
+from pathlib import Path
+
+
+API_HOST = "api.tinify.com"
+API_ORIGIN = f"https://{API_HOST}"
+MEDIA_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".avif": "image/avif",
+    ".jxl": "image/jxl",
+}
+
+
+def check_status(response, expected):
+    if response.status == expected:
+        return
+    body = response.read()
+    try:
+        detail = json.loads(body)["message"]
+    except (ValueError, KeyError, TypeError):
+        detail = response.reason
+    raise ValueError(f"Tinify HTTP {response.status}: {detail}")
+
+
+def save_image(response, target):
+    expected_size = response.getheader("Content-Length")
+    temp = tempfile.NamedTemporaryFile(dir=target.parent, delete=False)
+    temp_path = Path(temp.name)
+    try:
+        with temp:
+            shutil.copyfileobj(response, temp)
+            size = temp.tell()
+        if not size or (expected_size is not None and size != int(expected_size)):
+            raise ValueError("Tinify 返回的图片不完整")
+        if target.exists():
+            shutil.copymode(target, temp_path)
+        os.replace(temp_path, target)
+    finally:
+        temp_path.unlink(missing_ok=True)
+    return size
+
+
+def compress(source, target, key):
+    media_type = MEDIA_TYPES.get(source.suffix.lower())
+    if not media_type:
+        raise ValueError(f"不支持的图片扩展名 {source.suffix!r}")
+    if MEDIA_TYPES.get(target.suffix.lower()) != media_type:
+        raise ValueError("输出文件须与输入图片格式一致")
+    if not target.parent.is_dir() or target.is_dir():
+        raise ValueError(f"输出路径不可用 {target}")
+
+    auth = b64encode(f"api:{key}".encode()).decode("ascii")
+    headers = {"Authorization": f"Basic {auth}"}
+    with closing(http.client.HTTPSConnection(API_HOST, timeout=60)) as api:
+        with source.open("rb") as original:
+            input_size = os.fstat(original.fileno()).st_size
+            upload_headers = {**headers, "Content-Type": media_type, "Content-Length": str(input_size)}
+            api.request("POST", "/shrink", body=original, headers=upload_headers)
+        with api.getresponse() as response:
+            check_status(response, 201)
+            location = response.getheader("Location", "")
+            if not location.startswith(f"{API_ORIGIN}/output/"):
+                raise ValueError("Tinify 未返回有效的下载地址")
+            response.read()
+
+        api.request("GET", location[len(API_ORIGIN):], headers=headers)
+        with api.getresponse() as response:
+            check_status(response, 200)
+            if response.headers.get_content_type() != media_type:
+                raise ValueError("Tinify 返回的图片格式与文件扩展名不一致")
+            output_size = save_image(response, target)
+    return input_size, output_size
+
+
+def main():
+    parser = argparse.ArgumentParser(description="使用 TinyPNG 压缩 PNG、JPEG、WebP、AVIF 或 JPEG XL 图片")
+    parser.add_argument("image", type=Path, help="输入图片路径")
+    parser.add_argument("-o", "--output", type=Path, help="输出路径，默认写入同目录的 <名称>.min.<扩展名>")
+    args = parser.parse_args()
+    key = os.environ.get("TINIFY_API_KEY")
+    if not key:
+        parser.exit(2, "请先设置环境变量 TINIFY_API_KEY\n")
+    try:
+        target = args.output or args.image.with_suffix(".min" + args.image.suffix)
+        before, after = compress(args.image, target, key)
+    except (OSError, ValueError, http.client.HTTPException) as error:
+        parser.exit(1, f"压缩失败：{error}\n")
+    print(f"{target}  {before:,} → {after:,} bytes")
+
+
+if __name__ == "__main__":
+    main()
